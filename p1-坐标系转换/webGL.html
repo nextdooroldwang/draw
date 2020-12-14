@@ -10,5 +10,34 @@
 <body>
 
 </body>
+<script>
+  var arr = [{
+    id: 1,
+    spu: [{
+      idd: 1,
+      sku: [
+        { iddd: 1, name: '1-sku1' },
+        { iddd: 2, name: '1-sku2' },
+        { iddd: 3, name: '1-sku3' }
+      ]
+    }, {
+      idd: 2,
+      sku: [
+        { iddd: 4, name: 'sku1' },
+        { iddd: 5, name: 'sku2' },
+        { iddd: 6, name: 'sku3' }
+      ]
+    }]
+  }]
+  var d = arr.filter(item => {
+    return item.spu.filter(item => {
+
+      return item.sku.filter(item => {
+        return item.iddd === 4
+      }).length > 0
+    }).length > 0
+  })
+  console.log(d)
+</script>
 
 </html>
