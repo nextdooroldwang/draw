@@ -13,46 +13,82 @@
   }
 </style>
 <body>
-  <canvas id="mycanvas" width="1200" height="1200"></canvas>
+  <canvas id="mycanvas" width="800" height="800"></canvas>
 </body>
 <script id="fragmentShader" type="x-shader/x-fragment">
   #ifdef GL_ES
-precision mediump float;
-#endif
+  precision mediump float;
+  #endif
 
-#define TWO_PI 3.14159265359 * 2.0
+  #define TWO_PI 6.28318530718
 
-uniform vec2 u_resolution;
-uniform vec2 u_mouse;
-uniform float u_time;
+  uniform vec2 u_resolution;
+  uniform vec2 u_mouse;
+  uniform float u_time;
 
-vec3 rect(vec2 st, float b,vec2 c, float w,float h) {
-    float left = 1. - step(c.x, st.x) + step(b + c.x, st.x) + step(1. - c.y, st.y) + (1. - step(1. - c.y - h, st.y));
-    float right = 1. - step(c.x + w, st.x) + step(b + c.x + w, st.x) + step(1. - c.y, st.y) + (1. - step(1. - c.y - h, st.y));
-    float top = step(1. - c.y, st.y) + 1. - step(1. - b - c.y, st.y) + 1. - step(c.x, st.x) + step(c.x + w, st.x);
-    float bottom = 1. - step(1. - c.y - h, st.y) + step(1. - c.y - h + b, st.y) + 1. - step(c.x, st.x) + step(c.x + w, st.x);
+  vec3 hsb2rgb( in vec3 c ){
+    vec3 rgb = clamp(abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),
+                             6.0)-3.0)-1.0,
+                     0.0,
+                     1.0 );
+    rgb = rgb*rgb*(3.0-2.0*rgb);
+    return c.z * mix( vec3(1.0), rgb, c.y);
+}
+
+vec3 hsv2rgb_smooth( in vec3 c )
+{
+    vec3 rgb = clamp( abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0, 0.0, 1.0 );
+
+	rgb = rgb*rgb*(3.0-2.0*rgb); // cubic smoothing	
+
+	return c.z * mix( vec3(1.0), rgb, c.y);
+}
+
+vec3 rgb2hsb( in vec3 c ){
+  vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+  vec4 p = mix(vec4(c.bg, K.wz),
+               vec4(c.gb, K.xy),
+               step(c.b, c.g));
+  vec4 q = mix(vec4(p.xyw, c.r),
+               vec4(c.r, p.yzx),
+               step(p.x, c.r));
+  float d = q.x - min(q.w, q.y);
+  float e = 1.0e-10;
+  return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)),
+              d / (q.x + e),
+              q.x);
+}
+
+vec3 rect2circle(vec3 c, float length) {
+  float ret = .0;
+  vec3 blackRadius = c * vec3(1. - smoothstep(.495,.5,length));
+
+  return blackRadius;
+}
+
+  void main(){
+    vec2 st = gl_FragCoord.xy/u_resolution;
+    float pct = 0.0;
+
+    // a. The DISTANCE from the pixel to the center
+    //pct = distance(st,vec2(0.5));
+
+    // b. The LENGTH of the vector
+    //    from the pixel to the center
+      vec2 toCenter = vec2(0.5)-st;
+      float angle = atan(toCenter.y,toCenter.x);
+      pct = length(toCenter);
+
+    // c. The SQUARE ROOT of the vector
+    //    from the pixel to the center
+      //vec2 tC = vec2(0.5)-st;
+      //pct = sqrt(tC.x*tC.x+tC.y*tC.y);
     
-    return vec3(left*right*top*bottom);
-}
 
-vec3 rectfill(vec2 st, float b,vec2 c, float w, float h, vec3 bc, vec3 f) {
-  float left = 1. - step(c.x, st.x) + step(b + c.x, st.x) + step(1. - c.y, st.y) + (1. - step(1. - c.y - h, st.y));
-  float right = 1. - step(c.x + w, st.x) + step(b + c.x + w, st.x) + step(1. - c.y, st.y) + (1. - step(1. - c.y - h, st.y));
-  float top = step(1. - c.y, st.y) + 1. - step(1. - b - c.y, st.y) + 1. - step(c.x, st.x) + step(c.x + w, st.x);
-  float bottom = 1. - step(1. - c.y - h, st.y) + step(1. - c.y - h + b, st.y) + 1. - step(c.x, st.x) + step(c.x + w, st.x);
+    vec3 color = hsb2rgb(vec3(angle/TWO_PI+.5,pct*2.,1.));
   
-  return step(vec3(-.5), vec3(left*right*top*bottom) * -1.);
-}
-
-void main(){
-    vec2 st = gl_FragCoord.xy/u_resolution.xy;
-    vec3 color = vec3(0.0);
-
-    color = rectfill(st, .01, vec2(.05), .6, .5, vec3(0., 1., 0.), vec3(1., 0., 0.));
-    //color = rect(st, .01, vec2(.05), .6, .5) * rect(st, .005, vec2(.4), .4, .4);
-
-    gl_FragColor = vec4(color,1.0);
-}
+    gl_FragColor = vec4( rect2circle(color,pct), 1.0 );
+  }
 </script>
 <script>
   var fragment = document.getElementById('fragmentShader').textContent
